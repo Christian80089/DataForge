@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
 import axios from "axios";
-import { Plus, Save, X } from "lucide-react";
+import { Plus, Save, X, RotateCcw } from "lucide-react";
 
 export default function Table({ collection }) {
   const [data, setData] = useState([]);
@@ -290,10 +290,10 @@ export default function Table({ collection }) {
             })}
             <div className="flex justify-end gap-2 mt-4">
               <button
-                className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                className="flex items-center gap-1 px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 onClick={() => setExpandedDoc(null)}
               >
-                Annulla
+                <RotateCcw size={16} /> Annulla
               </button>
               <button
                 className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -315,8 +315,8 @@ export default function Table({ collection }) {
         onRowClicked={row => setExpandedDoc(row)}
         progressPending={loading}
         pagination
-        paginationPerPage={15}
-        paginationRowsPerPageOptions={[15, 30, 50, 100]}
+//         paginationPerPage={15}
+//         paginationRowsPerPageOptions={[15, 30, 50, 100]}
         highlightOnHover
         responsive
         striped
