@@ -11,10 +11,10 @@ export default function Table({ collection }) {
   const [selectedRows, setSelectedRows] = useState([]);
   const [showNewDocForm, setShowNewDocForm] = useState(false);
   const [newDocFields, setNewDocFields] = useState([]);
-  const [editedData, setEditedData] = useState({});
   const [showAddFieldForm, setShowAddFieldForm] = useState(false);
   const [globalFieldKey, setGlobalFieldKey] = useState("");
   const [globalFieldValue, setGlobalFieldValue] = useState("");
+  const [expandedDoc, setExpandedDoc] = useState(null); // Documento selezionato
 
   // 🔹 Fetch dati dal backend
   const fetchData = async () => {
@@ -29,7 +29,6 @@ export default function Table({ collection }) {
         return rest;
       });
       setData(cleaned);
-      setEditedData({});
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,34 +40,18 @@ export default function Table({ collection }) {
     fetchData();
   }, [collection]);
 
-  // 🔹 Gestione edit inline
-  const handleCellChange = (rowIndex, key, value) => {
-    setEditedData(prev => {
-      const updated = { ...prev };
-      if (!updated[rowIndex]) updated[rowIndex] = { ...data[rowIndex] };
-      updated[rowIndex][key] = value;
-      return updated;
-    });
-    setData(prev =>
-      prev.map((row, i) =>
-        i === rowIndex ? { ...row, [key]: value } : row
-      )
-    );
-  };
-
-  // 🔹 Salvataggio modifiche globali
-  const saveAllEdits = async () => {
-    const updates = Object.values(editedData);
-    if (updates.length === 0) return;
+  // 🔹 Salvataggio documento modificato
+  const saveDoc = async () => {
+    if (!expandedDoc) return;
     try {
-      await axios.put(`http://localhost:5000/api/data/bulk`, {
+      await axios.put(`http://localhost:5000/api/data`, {
         collection,
-        documents: updates,
+        document: expandedDoc,
       });
-      setEditedData({});
+      setExpandedDoc(null);
       fetchData();
     } catch (err) {
-      console.error("Errore salvataggio bulk:", err);
+      console.error("Errore salvataggio documento:", err);
     }
   };
 
@@ -131,17 +114,11 @@ export default function Table({ collection }) {
     }
   };
 
-  // 🔹 Definizione colonne
+  // 🔹 Definizione colonne (solo testo, riga cliccabile)
   const columns = data[0]
     ? Object.keys(data[0]).map(key => ({
         name: key,
-        selector: (row, rowIndex) => (
-          <input
-            className="border rounded px-1 w-full"
-            value={row[key] || ""}
-            onChange={e => handleCellChange(rowIndex, key, e.target.value)}
-          />
-        ),
+        selector: row => row[key] || "",
         sortable: true,
         wrap: true,
       }))
@@ -194,13 +171,6 @@ export default function Table({ collection }) {
           onClick={() => setShowAddFieldForm(prev => !prev)}
         >
           <Plus size={16} /> Aggiungi campo globale
-        </button>
-
-        <button
-          className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={saveAllEdits}
-        >
-          <Save size={16} /> Salva modifiche
         </button>
       </div>
 
@@ -271,11 +241,68 @@ export default function Table({ collection }) {
             />
           </div>
           <button
-            className="px-3 py-1 bg-purple-500 text-white rounded"
+            className="flex items-center gap-1 px-3 py-2 bg-purple-500 text-white rounded"
             onClick={addFieldToAllDocs}
           >
             <Plus size={16} /> Aggiungi a tutti
           </button>
+        </div>
+      )}
+
+      {/* 🔹 Modal documento selezionato */}
+      {expandedDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-3xl relative overflow-auto max-h-[90vh]">
+            <button
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+              onClick={() => setExpandedDoc(null)}
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-semibold mb-4">Modifica documento</h3>
+            {Object.keys(expandedDoc).map((key, index) => {
+              const value = expandedDoc[key];
+              const isLong = String(value).length > 50; // soglia testo lungo
+
+              return (
+                <div key={index} className="flex flex-col gap-1 mb-4">
+                  <label className="font-semibold">{key}</label>
+                  {isLong ? (
+                    <textarea
+                      className="w-full p-2 border rounded resize-none"
+                      rows={Math.max(3, Math.ceil(String(value).length / 50))}
+                      value={value}
+                      onChange={e =>
+                        setExpandedDoc(prev => ({ ...prev, [key]: e.target.value }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      className="w-full p-2 border rounded"
+                      value={value}
+                      onChange={e =>
+                        setExpandedDoc(prev => ({ ...prev, [key]: e.target.value }))
+                      }
+                    />
+                  )}
+                </div>
+              );
+            })}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                onClick={() => setExpandedDoc(null)}
+              >
+                Annulla
+              </button>
+              <button
+                className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                onClick={saveDoc}
+              >
+                <Save size={16} /> Salva
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -285,6 +312,7 @@ export default function Table({ collection }) {
         data={filteredData}
         selectableRows
         onSelectedRowsChange={state => setSelectedRows(state.selectedRows)}
+        onRowClicked={row => setExpandedDoc(row)}
         progressPending={loading}
         pagination
         paginationPerPage={15}
