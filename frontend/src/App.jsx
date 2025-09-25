@@ -8,10 +8,23 @@ export default function App() {
   const [selectedDb, setSelectedDb] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
 
+  // Recupera tutti i database e le collection
   useEffect(() => {
-    axios.get("http://localhost:5000/api/databases")
-      .then(res => setDatabases(res.data))
-      .catch(console.error);
+    const fetchDatabases = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/databases");
+        // Normalizza: ogni database con le sue collection
+        const dbList = res.data.map(db => ({
+          name: db.name,
+          collections: db.collections,
+        }));
+        setDatabases(dbList);
+      } catch (err) {
+        console.error("Errore recupero database:", err);
+      }
+    };
+
+    fetchDatabases();
   }, []);
 
   const handleSelectCollection = (dbName, collectionName) => {

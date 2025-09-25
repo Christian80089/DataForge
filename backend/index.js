@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Connetti a Mongo Atlas
+// Connessione MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -19,6 +19,7 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("MongoDB connesso"))
 .catch(err => console.log("Errore connessione MongoDB:", err));
 
+// Funzione helper per ottenere un model dinamico
 const getModel = (collectionName) => {
   const schema = new mongoose.Schema({}, { strict: false, collection: collectionName });
   return mongoose.models[collectionName] || mongoose.model(collectionName, schema);
@@ -53,7 +54,7 @@ app.get("/api/databases", async (req, res) => {
   }
 });
 
-// 🔹 GET dati collection
+// GET dati collection
 app.get("/api/data", async (req, res) => {
   try {
     const { collection } = req.query;
@@ -63,11 +64,12 @@ app.get("/api/data", async (req, res) => {
     const data = await Model.find().lean();
     res.json(data);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 🔹 POST nuovo documento
+// POST nuovo documento
 app.post("/api/data", async (req, res) => {
   try {
     const { collection, document } = req.body;
@@ -77,35 +79,59 @@ app.post("/api/data", async (req, res) => {
     const savedDoc = await new Model(document).save();
     res.json(savedDoc.toObject());
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 🔹 PUT aggiornamento documento
+// PUT aggiornamento documento
 app.put("/api/data/:id", async (req, res) => {
   try {
     const { collection } = req.query;
     const { id } = req.params;
     if (!collection) return res.status(400).json({ error: "Collection mancante" });
 
+    console.log("Aggiornamento documento:", id, req.body);
+
     const Model = getModel(collection);
     const updated = await Model.findByIdAndUpdate(id, req.body, { new: true });
     res.json(updated);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 🔹 DELETE documenti multipli
+// DELETE documenti multipli
 app.delete("/api/data", async (req, res) => {
   try {
     const { collection, ids } = req.body;
     if (!collection || !ids?.length) return res.status(400).json({ error: "Collection o IDs mancanti" });
 
+    console.log("Eliminazione documenti:", ids);
+
     const Model = getModel(collection);
     await Model.deleteMany({ _id: { $in: ids } });
     res.json({ message: "Documenti eliminati" });
   } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT aggiungi campo a tutti i documenti
+app.put("/api/add-field-all", async (req, res) => {
+  try {
+    const { collection, key, value } = req.body;
+    if (!collection || !key) return res.status(400).json({ error: "Collection o key mancante" });
+
+    console.log(`Aggiunta campo globale: ${key} = ${value}`);
+
+    const Model = getModel(collection);
+    await Model.updateMany({}, { $set: { [key]: value || "" } });
+    res.json({ message: "Campo aggiunto a tutti i documenti" });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

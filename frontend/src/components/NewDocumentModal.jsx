@@ -2,9 +2,7 @@ import { Plus, Save, X } from "lucide-react";
 
 export default function NewDocumentModal({ newDocFields, setNewDocFields, onClose, onSave, onAddField }) {
   const handleNewDocChange = (index, field, value) => {
-    setNewDocFields(prev =>
-      prev.map((f, i) => (i === index ? { ...f, [field]: value } : f))
-    );
+    setNewDocFields(prev => prev.map((f, i) => (i === index ? { ...f, [field]: value } : f)));
   };
 
   return (
@@ -34,31 +32,15 @@ export default function NewDocumentModal({ newDocFields, setNewDocFields, onClos
         ))}
 
         <div className="flex gap-2 mt-4 flex-wrap">
-          <button
-            className="flex items-center gap-1 px-2 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 flex-shrink-0"
-            onClick={onAddField}
-          >
+          <button className="flex items-center gap-1 px-2 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 flex-shrink-0" onClick={onAddField}>
             <Plus size={14} /> Campo
           </button>
 
-          <button
-            className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 flex-shrink-0"
-            onClick={e => {
-              e.preventDefault();
-              if (newDocFields.every(f => !f.key)) {
-                alert("Devi inserire almeno un campo!");
-                return;
-              }
-              onSave();
-            }}
-          >
+          <button className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 flex-shrink-0" onClick={e => { e.preventDefault(); if (newDocFields.every(f => !f.key)) return alert("Devi inserire almeno un campo!"); onSave(); }}>
             <Save size={14} /> Salva
           </button>
 
-          <button
-            className="flex items-center gap-1 px-2 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 flex-shrink-0"
-            onClick={onClose}
-          >
+          <button className="flex items-center gap-1 px-2 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 flex-shrink-0" onClick={onClose}>
             <X size={14} /> Annulla
           </button>
         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import axios from "axios";
 import { Plus, Save, X, RotateCcw } from "lucide-react";
+import api from "../services/api";
 import NewDocumentModal from "./NewDocumentModal";
 
 export default function Table({ collection }) {
@@ -21,10 +21,10 @@ export default function Table({ collection }) {
     if (!collection) return;
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/data?collection=${collection}`);
+      const res = await api.get(`/data?collection=${collection}`);
       const cleaned = (res.data || []).map(doc => {
         const { primary_key, script_date_time, ...rest } = doc;
-        return { ...rest, _id: doc._id }; // mantieni _id
+        return { ...rest, _id: doc._id };
       });
       setData(cleaned);
     } catch (err) {
@@ -36,23 +36,23 @@ export default function Table({ collection }) {
 
   useEffect(() => { fetchData(); }, [collection]);
 
+  // Aggiorna documento
   const saveDoc = async () => {
     if (!expandedDoc?._id) return;
+    const { _id, ...docToSave } = expandedDoc;
     try {
-      await axios.put(
-        `http://localhost:5000/api/data/${expandedDoc._id}?collection=${collection}`,
-        expandedDoc
-      );
+      await api.put(`/data/${_id}?collection=${collection}`, docToSave);
       setExpandedDoc(null);
       fetchData();
     } catch (err) {
-      console.error("Errore salvataggio documento:", err);
+      console.error(err);
     }
   };
 
+  // Nuovo documento
   const openNewDocForm = () => {
     if (data.length > 0) {
-      const keys = Object.keys(data[0]);
+      const keys = Object.keys(data[0]).filter(k => !["_id", "primary_key", "script_date_time"].includes(k));
       setNewDocFields(keys.map(k => ({ key: k, value: "" })));
     } else {
       setNewDocFields([{ key: "", value: "" }]);
@@ -67,54 +67,52 @@ export default function Table({ collection }) {
     newDocFields.forEach(f => { if (f.key) doc[f.key] = f.value; });
     if (!Object.keys(doc).length) return;
     try {
-      await axios.post(`http://localhost:5000/api/data`, { collection, document: doc });
+      await api.post(`/data`, { collection, document: doc });
       setShowNewDocForm(false);
       setNewDocFields([]);
       fetchData();
     } catch (err) {
-      console.error("Errore aggiunta documento:", err);
+      console.error(err);
     }
   };
 
+  // Aggiungi campo globale
   const addFieldToAllDocs = async () => {
     if (!globalFieldKey) return;
     try {
-      await axios.put(`http://localhost:5000/api/add-field-all`, {
+      await api.put(`/add-field-all`, {
         collection,
         key: globalFieldKey,
-        value: globalFieldValue,
+        value: globalFieldValue || ""
       });
       setShowAddFieldForm(false);
       setGlobalFieldKey("");
       setGlobalFieldValue("");
       fetchData();
     } catch (err) {
-      console.error("Errore aggiunta campo globale:", err);
+      console.error(err);
     }
   };
 
+  // Elimina documenti selezionati
   const deleteSelectedDocs = async () => {
     if (!selectedRows.length) return;
     if (!window.confirm(`Vuoi eliminare ${selectedRows.length} documento/i selezionato/i?`)) return;
     try {
       const idsToDelete = selectedRows.map(row => row._id);
-      await axios.delete(`http://localhost:5000/api/data`, { data: { collection, ids: idsToDelete } });
+      await api.delete(`/data`, { data: { collection, ids: idsToDelete } });
       setSelectedRows([]);
       fetchData();
     } catch (err) {
-      console.error("Errore eliminazione documenti:", err);
+      console.error(err);
     }
   };
 
+  // Colonne della tabella
   const columns = data[0]
     ? Object.keys(data[0])
         .filter(key => !["_id", "primary_key", "script_date_time"].includes(key))
-        .map(key => ({
-          name: key,
-          selector: row => row[key] || "",
-          sortable: true,
-          wrap: true,
-        }))
+        .map(key => ({ name: key, selector: row => row[key] || "", sortable: true, wrap: true }))
     : [];
 
   const filteredData = data.filter(d => {
@@ -126,17 +124,8 @@ export default function Table({ collection }) {
   return (
     <div className="h-full w-full p-4 shadow-2xl rounded-2xl bg-white overflow-auto">
       <div className="flex gap-2 mb-4 flex-wrap items-center">
-        <input
-          className="flex-1 p-2 border rounded"
-          placeholder="Cerca..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select
-          className="p-2 border rounded"
-          value={searchColumn}
-          onChange={e => setSearchColumn(e.target.value)}
-        >
+        <input className="flex-1 p-2 border rounded" placeholder="Cerca..." value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="p-2 border rounded" value={searchColumn} onChange={e => setSearchColumn(e.target.value)}>
           <option value="Tutte">Tutte le colonne</option>
           {columns.map(col => <option key={col.name} value={col.name}>{col.name}</option>)}
         </select>
@@ -154,15 +143,7 @@ export default function Table({ collection }) {
         </button>
       </div>
 
-      {showNewDocForm && (
-        <NewDocumentModal
-          newDocFields={newDocFields}
-          setNewDocFields={setNewDocFields}
-          onClose={() => setShowNewDocForm(false)}
-          onSave={saveNewDoc}
-          onAddField={addNewDocField}
-        />
-      )}
+      {showNewDocForm && <NewDocumentModal newDocFields={newDocFields} setNewDocFields={setNewDocFields} onClose={() => setShowNewDocForm(false)} onSave={saveNewDoc} onAddField={addNewDocField} />}
 
       {showAddFieldForm && (
         <div className="border p-3 mb-4 rounded bg-yellow-50">

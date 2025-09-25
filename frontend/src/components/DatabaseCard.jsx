@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { FaChevronRight, FaChevronDown } from "react-icons/fa";
 
-export default function DatabaseCard({ db, onSelectCollection, selectedCollection, onDisconnect }) {
+export default function DatabaseCard({ db, onSelectCollection, selectedCollection, onDisconnect, onConnect }) {
   const [isConnected, setIsConnected] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleConnect = () => setIsConnected(true);
+  const handleConnect = () => {
+    setIsConnected(true);
+    onConnect(db.name); // Notifica il parent che ci siamo connessi a questo DB
+  };
+
   const handleDisconnect = () => {
     setIsConnected(false);
     setMenuOpen(false);
@@ -20,26 +24,24 @@ export default function DatabaseCard({ db, onSelectCollection, selectedCollectio
       {/* Intestazione DB */}
       <div className="flex justify-between items-center mb-1">
         <div className="flex items-center gap-2">
-          {/* Pallino verde se connesso, rosso se non connesso */}
           <span className={`w-3 h-3 rounded-full block ${isConnected ? "bg-green-500" : "bg-red-500"}`}></span>
           <div>
             <div className="font-semibold">{db.name}</div>
             <div className="text-sm text-gray-500">
-              {db.type} {selectedCollection ? `- ${selectedCollection}` : ""}
+              {selectedCollection
+                ? `${db.type || "Mongo Atlas"} - ${selectedCollection}`
+                : db.type || "Mongo Atlas"}
             </div>
           </div>
         </div>
 
-        {/* Pulsanti e freccia */}
+        {/* Pulsanti */}
         <div className="flex items-center gap-2">
           {isConnected ? (
             <>
-              {/* Freccia toggle */}
               <button onClick={toggleMenu} className="text-gray-600 hover:text-gray-800">
                 {menuOpen ? <FaChevronDown /> : <FaChevronRight />}
               </button>
-
-              {/* Pulsante disconnetti */}
               <button
                 onClick={handleDisconnect}
                 className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
@@ -58,7 +60,7 @@ export default function DatabaseCard({ db, onSelectCollection, selectedCollectio
         </div>
       </div>
 
-      {/* Menu a scomparsa delle collection */}
+      {/* Menu collection */}
       {isConnected && menuOpen && db.collections?.length > 0 && (
         <div className="mt-2 flex flex-col gap-1">
           {db.collections.map((col) => (
