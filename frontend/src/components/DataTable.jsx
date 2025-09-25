@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
 import axios from "axios";
 import { Plus, Save, X, RotateCcw } from "lucide-react";
+import NewDocumentModal from "./NewDocumentModal";
 
 export default function Table({ collection }) {
   const [data, setData] = useState([]);
@@ -14,7 +15,7 @@ export default function Table({ collection }) {
   const [showAddFieldForm, setShowAddFieldForm] = useState(false);
   const [globalFieldKey, setGlobalFieldKey] = useState("");
   const [globalFieldValue, setGlobalFieldValue] = useState("");
-  const [expandedDoc, setExpandedDoc] = useState(null); // Documento selezionato
+  const [expandedDoc, setExpandedDoc] = useState(null);
 
   // 🔹 Fetch dati dal backend
   const fetchData = async () => {
@@ -66,15 +67,7 @@ export default function Table({ collection }) {
     setShowNewDocForm(true);
   };
 
-  const handleNewDocChange = (index, field, value) => {
-    setNewDocFields(prev =>
-      prev.map((f, i) => (i === index ? { ...f, [field]: value } : f))
-    );
-  };
-
-  const addNewDocField = () => {
-    setNewDocFields(prev => [...prev, { key: "", value: "" }]);
-  };
+  const addNewDocField = () => setNewDocFields(prev => [...prev, { key: "", value: "" }]);
 
   const saveNewDoc = async () => {
     const doc = {};
@@ -114,7 +107,7 @@ export default function Table({ collection }) {
     }
   };
 
-  // 🔹 Definizione colonne (solo testo, riga cliccabile)
+  // 🔹 Definizione colonne
   const columns = data[0]
     ? Object.keys(data[0]).map(key => ({
         name: key,
@@ -139,7 +132,7 @@ export default function Table({ collection }) {
   return (
     <div className="h-full w-full p-4 shadow-2xl rounded-2xl bg-white overflow-auto">
       {/* 🔹 Ricerca e controlli */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 flex-wrap">
         <input
           className="flex-1 p-2 border rounded"
           placeholder="Cerca..."
@@ -176,65 +169,28 @@ export default function Table({ collection }) {
 
       {/* 🔹 Modal nuovo documento */}
       {showNewDocForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-2xl relative">
-            <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
-              onClick={() => setShowNewDocForm(false)}
-            >
-              <X size={20} />
-            </button>
-            <h3 className="text-lg font-semibold mb-4">Nuovo documento</h3>
-            {newDocFields.map((f, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <input
-                  className="flex-1 p-2 border rounded"
-                  placeholder="Campo"
-                  value={f.key}
-                  onChange={e => handleNewDocChange(index, "key", e.target.value)}
-                  disabled={!!f.key}
-                />
-                <input
-                  className="flex-1 p-2 border rounded"
-                  placeholder="Valore"
-                  value={f.value}
-                  onChange={e =>
-                    handleNewDocChange(index, "value", e.target.value)
-                  }
-                />
-              </div>
-            ))}
-            <div className="flex gap-2 mt-4">
-              <button
-                className="flex items-center gap-1 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                onClick={addNewDocField}
-              >
-                <Plus size={16} /> Campo
-              </button>
-              <button
-                className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                onClick={saveNewDoc}
-              >
-                <Save size={16} /> Salva documento
-              </button>
-            </div>
-          </div>
-        </div>
+        <NewDocumentModal
+          newDocFields={newDocFields}
+          setNewDocFields={setNewDocFields}
+          onClose={() => setShowNewDocForm(false)}
+          onSave={saveNewDoc}
+          onAddField={addNewDocField}
+        />
       )}
 
       {/* 🔹 Form aggiunta campo globale */}
       {showAddFieldForm && (
         <div className="border p-3 mb-4 rounded bg-yellow-50">
           <h3 className="font-semibold mb-2">Aggiungi campo a tutti i documenti</h3>
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2 mb-2 flex-wrap">
             <input
-              className="flex-1 p-2 border rounded"
+              className="flex-1 min-w-[100px] p-2 border rounded"
               placeholder="Nome campo"
               value={globalFieldKey}
               onChange={e => setGlobalFieldKey(e.target.value)}
             />
             <input
-              className="flex-1 p-2 border rounded"
+              className="flex-1 min-w-[100px] p-2 border rounded"
               placeholder="Valore (opzionale)"
               value={globalFieldValue}
               onChange={e => setGlobalFieldValue(e.target.value)}
@@ -251,8 +207,8 @@ export default function Table({ collection }) {
 
       {/* 🔹 Modal documento selezionato */}
       {expandedDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-3xl relative overflow-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="bg-white p-4 rounded-2xl w-full max-w-2xl relative overflow-auto max-h-[90vh]">
             <button
               className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
               onClick={() => setExpandedDoc(null)}
@@ -262,7 +218,7 @@ export default function Table({ collection }) {
             <h3 className="text-lg font-semibold mb-4">Modifica documento</h3>
             {Object.keys(expandedDoc).map((key, index) => {
               const value = expandedDoc[key];
-              const isLong = String(value).length > 50; // soglia testo lungo
+              const isLong = String(value).length > 50;
 
               return (
                 <div key={index} className="flex flex-col gap-1 mb-4">
@@ -288,7 +244,7 @@ export default function Table({ collection }) {
                 </div>
               );
             })}
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2 mt-4 flex-wrap">
               <button
                 className="flex items-center gap-1 px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 onClick={() => setExpandedDoc(null)}
@@ -315,8 +271,6 @@ export default function Table({ collection }) {
         onRowClicked={row => setExpandedDoc(row)}
         progressPending={loading}
         pagination
-//         paginationPerPage={15}
-//         paginationRowsPerPageOptions={[15, 30, 50, 100]}
         highlightOnHover
         responsive
         striped
