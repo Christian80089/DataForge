@@ -61,7 +61,7 @@ app.get("/api/data", async (req, res) => {
     if (!collection) return res.status(400).json({ error: "Collection mancante" });
 
     const Model = getModel(collection);
-    const data = await Model.find().lean();
+    const data = await Model.find().select("-__v").lean();
     res.json(data);
   } catch (err) {
     console.error(err);
