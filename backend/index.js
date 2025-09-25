@@ -19,39 +19,10 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("MongoDB connesso"))
 .catch(err => console.log("Errore connessione MongoDB:", err));
 
-// Funzione per ottenere un modello generico per qualsiasi collection
 const getModel = (collectionName) => {
   const schema = new mongoose.Schema({}, { strict: false, collection: collectionName });
   return mongoose.models[collectionName] || mongoose.model(collectionName, schema);
 };
-// 🔹 GET tutti i database e le collection
-app.get("/api/databases", async (req, res) => {
-  try {
-    const admin = mongoose.connection.db.admin();
-    const dbs = await admin.listDatabases();
-
-    const result = [];
-
-    for (let dbInfo of dbs.databases) {
-      const dbName = dbInfo.name;
-      if (dbName === "admin" || dbName === "local" || dbName === "config") continue; // filtra i sistemi interni
-
-      // Connettiti temporaneamente a quel database
-      const db = mongoose.connection.client.db(dbName);
-      const collections = await db.listCollections().toArray();
-      result.push({
-        name: dbName,
-        type: "Mongo Atlas",
-        collections: collections.map(c => c.name),
-      });
-    }
-
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // 🔹 GET dati collection
 app.get("/api/data", async (req, res) => {
@@ -67,34 +38,44 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
-// 🔹 PUT aggiornamento documento
-app.put("/api/data/:id", async (req, res) => {
+// 🔹 POST nuovo documento
+app.post("/api/data", async (req, res) => {
   try {
-    const { collection } = req.query;
-    const { id } = req.params;
-    const update = req.body;
-
-    if (!collection) return res.status(400).json({ error: "Collection mancante" });
+    const { collection, document } = req.body;
+    if (!collection || !document) return res.status(400).json({ error: "Collection o documento mancante" });
 
     const Model = getModel(collection);
-    await Model.findByIdAndUpdate(id, update);
-    res.json({ message: "Documento aggiornato" });
+    const savedDoc = await new Model(document).save();
+    res.json(savedDoc.toObject());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 🔹 DELETE documento
-app.delete("/api/data/:id", async (req, res) => {
+// 🔹 PUT aggiornamento documento
+app.put("/api/data/:id", async (req, res) => {
   try {
     const { collection } = req.query;
     const { id } = req.params;
-
     if (!collection) return res.status(400).json({ error: "Collection mancante" });
 
     const Model = getModel(collection);
-    await Model.findByIdAndDelete(id);
-    res.json({ message: "Documento eliminato" });
+    const updated = await Model.findByIdAndUpdate(id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🔹 DELETE documenti multipli
+app.delete("/api/data", async (req, res) => {
+  try {
+    const { collection, ids } = req.body;
+    if (!collection || !ids?.length) return res.status(400).json({ error: "Collection o IDs mancanti" });
+
+    const Model = getModel(collection);
+    await Model.deleteMany({ _id: { $in: ids } });
+    res.json({ message: "Documenti eliminati" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
