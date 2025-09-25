@@ -24,6 +24,35 @@ const getModel = (collectionName) => {
   return mongoose.models[collectionName] || mongoose.model(collectionName, schema);
 };
 
+// 🔹 GET tutti i database e le collection
+app.get("/api/databases", async (req, res) => {
+  try {
+    const admin = mongoose.connection.db.admin();
+    const dbs = await admin.listDatabases();
+
+    const result = [];
+
+    for (let dbInfo of dbs.databases) {
+      const dbName = dbInfo.name;
+      if (dbName === "admin" || dbName === "local" || dbName === "config") continue; // filtra i sistemi interni
+
+      // Connettiti temporaneamente a quel database
+      const db = mongoose.connection.client.db(dbName);
+      const collections = await db.listCollections().toArray();
+      result.push({
+        name: dbName,
+        type: "Mongo Atlas",
+        collections: collections.map(c => c.name),
+      });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 🔹 GET dati collection
 app.get("/api/data", async (req, res) => {
   try {
